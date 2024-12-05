@@ -1,33 +1,81 @@
 package com.bu.harshvaghani.backend.controller;
 
+import com.bu.harshvaghani.backend.advices.ApiResponse;
 import com.bu.harshvaghani.backend.dto.UserDTO;
+import com.bu.harshvaghani.backend.entities.UserEntity;
+import com.bu.harshvaghani.backend.exception.ResourceNotFoundException;
+import com.bu.harshvaghani.backend.exception.UnauthorizedActionException;
 import com.bu.harshvaghani.backend.services.UserService;
+import lombok.RequiredArgsConstructor;
+import org.modelmapper.ModelMapper;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+import java.util.Optional;
+
 @RestController
-@RequestMapping("/api/users")
+@RequestMapping("/user")
+@RequiredArgsConstructor
 public class UserController {
-
     private final UserService userService;
+    private final ModelMapper modelMapper;
 
-    public UserController(UserService userService) {
-        this.userService = userService;
-    }
-
-    @GetMapping("/{id}")
-    public ResponseEntity<UserDTO> getUserById(@PathVariable Long id) {
-        UserDTO userDTO = userService.getUserById(id);
-        if (userDTO == null) {
-            throw new ResourceNotFoundException("User not found with id: " + id);
+    @GetMapping(path = "/id/{userID}")
+    public ResponseEntity<ApiResponse<UserDTO>> getUserById(@PathVariable Long userID) {
+        UserEntity userEntity = userService.getUserById(userID);
+        if (userEntity == null) {
+            throw new ResourceNotFoundException("Employee with id " + userID + " not found!");
         }
-        return new ResponseEntity<>(userDTO, HttpStatus.OK);
+        UserDTO user = modelMapper.map(userEntity, UserDTO.class);
+        return new ResponseEntity<>(new ApiResponse<>(user), HttpStatus.OK);
     }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<UserDTO> updateUser(@PathVariable Long id, @RequestBody UserDTO userDTO) {
-        UserDTO updatedUser = userService.updateUser(id, userDTO);
-        return new ResponseEntity<>(updatedUser, HttpStatus.OK);
+    @GetMapping(path = "/email/{email}")
+    public ResponseEntity<ApiResponse<UserDTO>> getUserByEmail(@PathVariable String email) {
+        Optional<UserDTO> user = userService.getUserByEmail(email);
+        if (user.isEmpty()) {
+            throw new ResourceNotFoundException("Employee with email " + email + " not found!");
+        }
+        return new ResponseEntity<>(new ApiResponse<>(user.get()), HttpStatus.OK);
     }
+
+    @PutMapping(path = "/{userId}")
+    public ResponseEntity<ApiResponse<UserDTO>> updateEmployeeById(@RequestBody UserDTO userDTO, @PathVariable Long userId) {
+        try {
+            UserDTO userDTO1 = userService.updateUserById(userDTO, userId);
+            if (userDTO1 == null) {
+                throw new ResourceNotFoundException("Employee with id " + userId + " not found!");
+            }
+            return new ResponseEntity<>(new ApiResponse<>(userDTO1), HttpStatus.OK);
+        } catch (UnauthorizedActionException exception) {
+            throw new UnauthorizedActionException(exception.getMessage());
+        }
+    }
+
+    @PatchMapping(path = "/{userId}")
+    public ResponseEntity<ApiResponse<UserDTO>> updatePartialEmployeeById(@PathVariable Long userId, @RequestBody Map<String, Object> updates) {
+        try {
+            UserDTO userDTO = userService.updatePartialUserById(userId, updates);
+            if (userDTO == null) {
+                throw new ResourceNotFoundException("Employee with id " + userId + " not found!");
+            }
+            return new ResponseEntity<>(new ApiResponse<>(userDTO), HttpStatus.OK);
+        } catch (ResourceNotFoundException exception) {
+            throw new ResourceNotFoundException(exception.getMessage());
+        }
+
+    }
+
+    @DeleteMapping(path = "/{userId}")
+    public ResponseEntity<ApiResponse<Boolean>> deleteEmployee(@PathVariable Long userId) {
+        boolean deleted = userService.deleteUser(userId);
+        if (!deleted) {
+            throw new ResourceNotFoundException("Employee with id " + userId + " not found!");
+        }
+        return new ResponseEntity<>(new ApiResponse<>(deleted), HttpStatus.OK);
+
+    }
+
 }

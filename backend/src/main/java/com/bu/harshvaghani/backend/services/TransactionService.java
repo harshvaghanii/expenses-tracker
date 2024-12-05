@@ -5,9 +5,7 @@ import com.bu.harshvaghani.backend.dto.TransactionDTO;
 import java.util.List;
 
 public interface TransactionService {
-    TransactionDTO createTransaction(TransactionDTO transactionDTO);
+    public List<TransactionDTO> getAllTransactionsByUserId(Long userId);
 
-    List<TransactionDTO> getTransactionsForUser(Long userId);
-
-
+    public TransactionDTO addTransaction(TransactionDTO transactionDTO);
 }

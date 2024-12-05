@@ -1,32 +1,29 @@
-package com.bu.harshvaghani.backend.controller;
+package com.bu.harshvaghani.backend.controllers;
 
+import com.bu.harshvaghani.backend.advices.ApiResponse;
 import com.bu.harshvaghani.backend.dto.TransactionDTO;
+import com.bu.harshvaghani.backend.exception.ResourceNotFoundException;
 import com.bu.harshvaghani.backend.services.TransactionService;
+import lombok.Data;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
 @RestController
-@RequestMapping("/api/transactions")
+@Data
+@RequestMapping(path = "/transactions")
 public class TransactionController {
 
     private final TransactionService transactionService;
 
-    public TransactionController(TransactionService transactionService) {
-        this.transactionService = transactionService;
-    }
-
     @PostMapping
-    public ResponseEntity<TransactionDTO> createTransaction(@RequestBody TransactionDTO transactionDTO) {
-        TransactionDTO createdTransaction = transactionService.createTransaction(transactionDTO);
-        return new ResponseEntity<>(createdTransaction, HttpStatus.CREATED);
+    public ResponseEntity<ApiResponse<TransactionDTO>> addTransaction(@RequestBody TransactionDTO transactionDTO) {
+        try {
+            TransactionDTO transaction = transactionService.addTransaction(transactionDTO);
+            return new ResponseEntity<>(new ApiResponse<>(transaction), HttpStatus.CREATED);
+        } catch (ResourceNotFoundException exception) {
+            throw new ResourceNotFoundException(exception.getMessage());
+        }
     }
 
-    @GetMapping("/user/{userId}")
-    public ResponseEntity<List<TransactionDTO>> getTransactionsForUser(@PathVariable Long userId) {
-        List<TransactionDTO> transactions = transactionService.getTransactionsForUser(userId);
-        return new ResponseEntity<>(transactions, HttpStatus.OK);
-    }
 }

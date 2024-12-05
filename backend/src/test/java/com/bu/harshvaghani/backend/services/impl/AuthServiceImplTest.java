@@ -2,7 +2,6 @@ package com.bu.harshvaghani.backend.services.impl;
 
 import com.bu.harshvaghani.backend.dto.SignUpDTO;
 import com.bu.harshvaghani.backend.dto.UserDTO;
-import com.bu.harshvaghani.backend.entities.User;
 import com.bu.harshvaghani.backend.exception.ResourceNotFoundException;
 import com.bu.harshvaghani.backend.repositories.UserRepository;
 import org.junit.jupiter.api.BeforeEach;

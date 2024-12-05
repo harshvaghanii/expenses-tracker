@@ -1,31 +1,47 @@
-package com.bu.harshvaghani.backend.controller;
+package com.bu.harshvaghani.backend.controllers;
 
+import com.bu.harshvaghani.backend.advices.ApiResponse;
+import com.bu.harshvaghani.backend.dto.LoginDTO;
 import com.bu.harshvaghani.backend.dto.SignUpDTO;
 import com.bu.harshvaghani.backend.dto.UserDTO;
 import com.bu.harshvaghani.backend.services.AuthService;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+@RequestMapping("/user/auth/")
+@RequiredArgsConstructor
 @RestController
-@RequestMapping("/api/auth")
 public class AuthController {
 
     private final AuthService authService;
 
-    public AuthController(AuthService authService) {
-        this.authService = authService;
+    @GetMapping(path = "/some")
+    public ResponseEntity<ApiResponse<String>> signup() {
+        String message = "Reached here!";
+        if (message == null) return ResponseEntity.notFound().build();
+        return new ResponseEntity<>(new ApiResponse<>(message), HttpStatus.OK);
     }
 
-    @PostMapping("/signup")
-    public ResponseEntity<UserDTO> signup(@RequestBody SignUpDTO signUpDTO) {
+    @PostMapping(path = "signup")
+    public ResponseEntity<ApiResponse<UserDTO>> signup(@RequestBody SignUpDTO signUpDTO) {
         UserDTO userDTO = authService.signup(signUpDTO);
-        return new ResponseEntity<>(userDTO, HttpStatus.CREATED);
+        return new ResponseEntity<>(new ApiResponse<>(userDTO), HttpStatus.CREATED);
     }
 
-    @PostMapping("/login")
-    public ResponseEntity<String> login(@RequestParam String email, @RequestParam String password) {
-        String token = authService.login(email, password);
-        return new ResponseEntity<>(token, HttpStatus.OK);
+    @PostMapping(path = "login")
+    public ResponseEntity<ApiResponse<String>> login(@RequestBody LoginDTO loginDTO, HttpServletRequest request,
+                                                     HttpServletResponse response) {
+        String token = authService.login(request, response, loginDTO);
+        Cookie cookie = new Cookie("token", token);
+        cookie.setHttpOnly(true);
+        response.addCookie(cookie);
+        return new ResponseEntity<>(new ApiResponse<>(token), HttpStatus.OK);
     }
+
 }
+

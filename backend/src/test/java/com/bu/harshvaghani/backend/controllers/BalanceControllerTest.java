@@ -2,7 +2,6 @@ package com.bu.harshvaghani.backend.controller;
 
 import com.bu.harshvaghani.backend.dto.BalanceDTO;
 import com.bu.harshvaghani.backend.dto.UserDTO;
-import com.bu.harshvaghani.backend.services.BalanceService;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;

@@ -1,8 +1,6 @@
 package com.bu.harshvaghani.backend.services.impl;
 
 import com.bu.harshvaghani.backend.dto.TransactionDTO;
-import com.bu.harshvaghani.backend.entities.Transaction;
-import com.bu.harshvaghani.backend.entities.User;
 import com.bu.harshvaghani.backend.repositories.TransactionRepository;
 import com.bu.harshvaghani.backend.repositories.UserRepository;
 import org.junit.jupiter.api.BeforeEach;

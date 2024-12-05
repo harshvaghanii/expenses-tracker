@@ -16,7 +16,8 @@ import java.time.LocalDateTime;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class Transaction {
+@Table(name = "transactions")
+public class TransactionEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -25,11 +26,11 @@ public class Transaction {
 
     @ManyToOne
     @JoinColumn(name = "payed_by", referencedColumnName = "user_id", nullable = false)
-    private User paidBy;
+    private UserEntity paidBy;
 
     @ManyToOne
     @JoinColumn(name = "owed_by", referencedColumnName = "user_id", nullable = false)
-    private User owedBy;
+    private UserEntity owedBy;
 
     @Column(name = "amount", nullable = false)
     private BigDecimal amount;
@@ -37,7 +38,8 @@ public class Transaction {
     @Column(name = "description", length = 255)
     private String description;
 
-    @Column(name = "transaction_date", nullable = false)
+    @CreationTimestamp
+    @Column(name = "transaction_date")
     private LocalDateTime transactionDate;
 
     @CreationTimestamp
@@ -50,3 +52,5 @@ public class Transaction {
 
 
 }
+
+

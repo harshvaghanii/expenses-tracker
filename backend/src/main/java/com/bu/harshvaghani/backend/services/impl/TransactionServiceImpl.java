@@ -1,63 +1,94 @@
 package com.bu.harshvaghani.backend.services.impl;
 
 import com.bu.harshvaghani.backend.dto.TransactionDTO;
-import com.bu.harshvaghani.backend.entities.Transaction;
-import com.bu.harshvaghani.backend.entities.User;
+import com.bu.harshvaghani.backend.dto.UserDTO;
+import com.bu.harshvaghani.backend.entities.BalanceEntity;
+import com.bu.harshvaghani.backend.entities.TransactionEntity;
+import com.bu.harshvaghani.backend.entities.UserEntity;
 import com.bu.harshvaghani.backend.exception.ResourceNotFoundException;
+import com.bu.harshvaghani.backend.exception.UnauthorizedActionException;
+import com.bu.harshvaghani.backend.repositories.BalanceRepository;
 import com.bu.harshvaghani.backend.repositories.TransactionRepository;
 import com.bu.harshvaghani.backend.repositories.UserRepository;
 import com.bu.harshvaghani.backend.services.TransactionService;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.bu.harshvaghani.backend.utilities.BalanceUtility;
+import lombok.Data;
+import org.modelmapper.ModelMapper;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Optional;
 
 @Service
+@Data
 public class TransactionServiceImpl implements TransactionService {
 
     private final TransactionRepository transactionRepository;
     private final UserRepository userRepository;
+    private final ModelMapper modelMapper;
+    private final BalanceRepository balanceRepository;
+    private final JWTServiceImpl jwtService;
 
-    @Autowired
-    public TransactionServiceImpl(TransactionRepository transactionRepository, UserRepository userRepository) {
-        this.transactionRepository = transactionRepository;
-        this.userRepository = userRepository;
+    @Override
+    public List<TransactionDTO> getAllTransactionsByUserId(Long userId) {
+        return List.of();
     }
 
     @Override
-    public TransactionDTO createTransaction(TransactionDTO transactionDTO) {
-        User paidBy = userRepository.findById(transactionDTO.getPaidBy().getId())
+    public TransactionDTO addTransaction(TransactionDTO transactionDTO) {
+
+        // Authorizing the requests
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        Long requesterId = ((UserEntity) authentication.getPrincipal()).getId();
+
+        Long paidById = transactionDTO.getPaidBy().getId();
+        Long owedById = transactionDTO.getOwedBy().getId();
+
+        if (!requesterId.equals(paidById) && !requesterId.equals(owedById)) {
+            throw new UnauthorizedActionException("You are not authorized to perform this action.");
+        }
+
+        Long ID = transactionDTO.getPaidBy().getId();
+        UserEntity paidBy = userRepository.findById(transactionDTO.getPaidBy().getId())
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + transactionDTO.getPaidBy().getId()));
 
-        User owedBy = userRepository.findById(transactionDTO.getOwedBy().getId())
+        UserEntity owedBy = userRepository.findById(transactionDTO.getOwedBy().getId())
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + transactionDTO.getOwedBy().getId()));
+        TransactionEntity toSave = modelMapper.map(transactionDTO, TransactionEntity.class);
+        toSave.setPaidBy(paidBy);
+        toSave.setOwedBy(owedBy);
+        TransactionEntity savedTransaction = transactionRepository.save(toSave);
 
-        Transaction transaction = new Transaction();
-        transaction.setPaidBy(paidBy);
-        transaction.setOwedBy(owedBy);
-        transaction.setAmount(transactionDTO.getAmount());
-        transaction.setDescription(transactionDTO.getDescription());
-        transaction.setTransactionDate(transactionDTO.getTransactionDate());
+        // Modify the balance table
+        boolean paidByUserOne = transactionDTO.getPaidBy().getId() < transactionDTO.getOwedBy().getId();
+        updateBalance(transactionDTO.getPaidBy(), transactionDTO.getOwedBy(), paidByUserOne, transactionDTO.getAmount());
 
-        Transaction savedTransaction = transactionRepository.save(transaction);
-        return new TransactionDTO(new UserDTO(paidBy.getName(), paidBy.getEmail(), paidBy.getCreatedAt(), paidBy.getUpdatedAt()),
-                new UserDTO(owedBy.getName(), owedBy.getEmail(), owedBy.getCreatedAt(), owedBy.getUpdatedAt()),
-                savedTransaction.getAmount(), savedTransaction.getDescription(),
-                savedTransaction.getTransactionDate(), savedTransaction.getCreatedAt(), savedTransaction.getUpdatedAt());
+        return modelMapper.map(savedTransaction, TransactionDTO.class);
+
     }
 
-    @Override
-    public List<TransactionDTO> getTransactionsForUser(Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
+    public void updateBalance(UserDTO user1, UserDTO user2, boolean paidByUserOne, BigDecimal amount) {
+        String balanceId = BalanceUtility.generateBalanceId(user1, user2);
+        BalanceEntity balanceEntity = balanceRepository.findByBalanceId(balanceId)
+                .orElseGet(() -> BalanceEntity.builder()
+                        .balanceId(balanceId)
+                        .balanceAmount(BigDecimal.ZERO)
+                        .user1(modelMapper.map(user1, UserEntity.class))
+                        .user2(modelMapper.map(user2, UserEntity.class))
+                        .createdAt(LocalDateTime.now())
+                        .createdAt(LocalDateTime.now())
+                        .build());
 
-        List<Transaction> transactions = transactionRepository.findAllByPaidByOrOwedBy(user, user);
-        return transactions.stream().map(transaction -> new TransactionDTO(
-                new UserDTO(transaction.getPaidBy().getName(), transaction.getPaidBy().getEmail(), transaction.getPaidBy().getCreatedAt(), transaction.getPaidBy().getUpdatedAt()),
-                new UserDTO(transaction.getOwedBy().getName(), transaction.getOwedBy().getEmail(), transaction.getOwedBy().getCreatedAt(), transaction.getOwedBy().getUpdatedAt()),
-                transaction.getAmount(), transaction.getDescription(), transaction.getTransactionDate(),
-                transaction.getCreatedAt(), transaction.getUpdatedAt()
-        )).collect(Collectors.toList());
+        if (!paidByUserOne) {
+            amount = amount.negate();
+        }
+        balanceEntity.setBalanceAmount(balanceEntity.getBalanceAmount().add(amount));
+        balanceEntity.setLastUpdated(LocalDateTime.now());
+
+        balanceRepository.save(balanceEntity);
     }
 }
