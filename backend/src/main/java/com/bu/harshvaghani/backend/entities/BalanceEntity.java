@@ -1,41 +1,46 @@
 package com.bu.harshvaghani.backend.entities;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
+@AllArgsConstructor
+@NoArgsConstructor
 @Getter
 @Setter
-@NoArgsConstructor
-@AllArgsConstructor
-public class Balance {
-
+@Builder
+@Table(name = "balances")
+public class BalanceEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "balance_id")
+    @Column(name = "id")
     Long id;
 
     @ManyToOne
     @JoinColumn(referencedColumnName = "user_id", nullable = false)
-    private User user1;
+    private UserEntity user1;
 
     @ManyToOne
     @JoinColumn(referencedColumnName = "user_id", nullable = false)
-    private User user2;
+    private UserEntity user2;
 
     @Column(nullable = false)
     private BigDecimal balanceAmount;
 
+    @Column(nullable = false, name = "balace_id", unique = true)
+    private String balanceId;
+
+    @Column(name = "first_transaction")
+    @CreationTimestamp
+    private LocalDateTime createdAt;
+
     @UpdateTimestamp
     @Column(name = "last_updated")
     private LocalDateTime lastUpdated;
-
-
 }
+
